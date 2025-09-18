@@ -20,7 +20,8 @@ const (
 
 // 请求结构
 type TokenRequest struct {
-	UserID string `json:"userID" binding:"required"`
+	UserID     string `json:"userID" binding:"required"`
+	PlatformID int    `json:"platformID" binding:"required"`
 }
 
 // 响应结构
@@ -56,7 +57,7 @@ func main() {
 		}
 		fmt.Println("管理员 token:", adminToken)
 
-		userToken, err := getUserToken(adminToken, req.UserID, 5)
+		userToken, err := getUserToken(adminToken, req.UserID, req.PlatformID)
 		if err != nil {
 			fmt.Println("获取用户 token 失败:", err)
 			return

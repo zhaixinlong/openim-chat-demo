@@ -51,6 +51,7 @@ IMSDK.on(CbEvents.OnConnectFailed, (evt) => console.error("WS 连接失败", evt
 
 const isLogin = ref(false);
 const userID = ref("4319292610");
+const platformID = ref(5);
 const token = ref("");
 const receiverID = ref("5927646776");
 const newMessage = ref("1234567489");
@@ -63,7 +64,7 @@ async function login() {
     const res = await fetch("http://localhost:8081/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userID: userID.value }),
+      body: JSON.stringify({ userID: userID.value, platformID: platformID.value }),
     });
     const data = await res.json();
     token.value = data.token;
@@ -71,7 +72,7 @@ async function login() {
     const config = {
         userID: userID.value,       // IM 用户 userID
         token: token.value,        // IM 用户令牌
-        platformID: 5,   // 当前登录平台号
+        platformID: platformID.value,   // 当前登录平台号
         apiAddr: "http://192.168.0.100:10002",   // IM api 地址，一般为`http://your-server-ip:10002`或`https://your-server-ip/api
         wsAddr: "ws://192.168.0.100:10001/ws",    // IM ws 地址，一般为`ws://your-server-ip:10001`或`wss://your-server-ip/msg_gateway
     }
