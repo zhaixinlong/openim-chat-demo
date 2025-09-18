@@ -1,0 +1,122 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"time"
+)
+
+const (
+	APIAddress = "http://127.0.0.1:10002" // 替换成你的 OpenIM API 地址
+	AdminID    = "imAdmin"
+	Secret     = "openIM123"
+)
+
+// 管理员 token 响应结构
+type AdminTokenResp struct {
+	ErrCode int    `json:"errCode"`
+	ErrMsg  string `json:"errMsg"`
+	Data    struct {
+		Token             string `json:"token"`
+		ExpireTimeSeconds int64  `json:"expireTimeSeconds"`
+	} `json:"data"`
+}
+
+// 用户 token 响应结构
+type UserTokenResp struct {
+	ErrCode int    `json:"errCode"`
+	ErrMsg  string `json:"errMsg"`
+	Data    struct {
+		Token             string `json:"token"`
+		ExpireTimeSeconds int64  `json:"expireTimeSeconds"`
+	} `json:"data"`
+}
+
+// 获取管理员 token
+func getAdminToken() (string, error) {
+	url := fmt.Sprintf("%s/auth/get_admin_token", APIAddress)
+
+	reqBody := map[string]string{
+		"secret": Secret,
+		"userID": AdminID,
+	}
+	bodyBytes, _ := json.Marshal(reqBody)
+
+	req, _ := http.NewRequest("POST", url, bytes.NewReader(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("operationID", fmt.Sprintf("%d", time.Now().UnixMilli()))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	respBytes, _ := ioutil.ReadAll(resp.Body)
+	var respData AdminTokenResp
+	if err := json.Unmarshal(respBytes, &respData); err != nil {
+		return "", err
+	}
+
+	if respData.ErrCode != 0 {
+		return "", fmt.Errorf("获取管理员 token 失败: %d %s", respData.ErrCode, respData.ErrMsg)
+	}
+
+	return respData.Data.Token, nil
+}
+
+// 获取指定用户 token
+func getUserToken(adminToken, userID string, platformID int) (string, error) {
+	url := fmt.Sprintf("%s/auth/get_user_token", APIAddress)
+
+	reqBody := map[string]interface{}{
+		"userID":     userID,
+		"platformID": platformID,
+	}
+	bodyBytes, _ := json.Marshal(reqBody)
+
+	req, _ := http.NewRequest("POST", url, bytes.NewReader(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("operationID", fmt.Sprintf("%d", time.Now().UnixMilli()))
+	req.Header.Set("token", adminToken)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	respBytes, _ := ioutil.ReadAll(resp.Body)
+	var respData UserTokenResp
+	if err := json.Unmarshal(respBytes, &respData); err != nil {
+		return "", err
+	}
+
+	if respData.ErrCode != 0 {
+		return "", fmt.Errorf("获取用户 token 失败: %d %s", respData.ErrCode, respData.ErrMsg)
+	}
+
+	return respData.Data.Token, nil
+}
+
+func main() {
+	adminToken, err := getAdminToken()
+	if err != nil {
+		fmt.Println("获取管理员 token 失败:", err)
+		return
+	}
+	fmt.Println("管理员 token:", adminToken)
+
+	userID := "4319292610" // 测试用 userID
+	userToken, err := getUserToken(adminToken, userID, 1)
+	if err != nil {
+		fmt.Println("获取用户 token 失败:", err)
+		return
+	}
+	fmt.Println("用户 token:", userToken)
+}
