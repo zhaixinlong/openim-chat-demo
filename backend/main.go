@@ -49,6 +49,7 @@ func main() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		fmt.Printf("req: %+v", req)
 
 		adminToken, err := getAdminToken()
 		if err != nil {
@@ -107,6 +108,7 @@ func getAdminToken() (string, error) {
 		"userID": AdminID,
 	}
 	bodyBytes, _ := json.Marshal(reqBody)
+	fmt.Printf("getAdminToken reqBody: %+v", reqBody)
 
 	req, _ := http.NewRequest("POST", url, bytes.NewReader(bodyBytes))
 	req.Header.Set("Content-Type", "application/json")
@@ -141,6 +143,7 @@ func getUserToken(adminToken, userID string, platformID int) (string, error) {
 		"platformID": platformID,
 	}
 	bodyBytes, _ := json.Marshal(reqBody)
+	fmt.Printf("getUserToken reqBody: %+v", reqBody)
 
 	req, _ := http.NewRequest("POST", url, bytes.NewReader(bodyBytes))
 	req.Header.Set("Content-Type", "application/json")

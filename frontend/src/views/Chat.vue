@@ -48,12 +48,21 @@ const IMSDK = getSDK();
 
 IMSDK.on(CbEvents.OnConnectSuccess, () => console.log("WS 已连接"));
 IMSDK.on(CbEvents.OnConnectFailed, (evt) => console.error("WS 连接失败", evt));
+IMSDK.on(CbEvents.OnRecvNewMessages, (msgs) => {
+    console.log("收到消息", msgs);
+    for (const msg of msgs.data) {
+      messages.value.push({
+        sender: msg.sendID,
+        content: msg.textElem.content
+      });
+    }
+});
 
 const isLogin = ref(false);
-const userID = ref("4319292610");
+const userID = ref("8138319424");
 const platformID = ref(5);
 const token = ref("");
-const receiverID = ref("5927646776");
+const receiverID = ref("4494661022");
 const newMessage = ref("1234567489");
 const messages = ref<{ sender: string; content: string }[]>([]);
 
