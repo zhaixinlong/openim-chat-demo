@@ -26,8 +26,33 @@ type TokenRequest struct {
 
 // 响应结构
 type TokenResponse struct {
-	UserID string `json:"userID"`
-	Token  string `json:"token"`
+	ErrCode int    `json:"errCode"`
+	ErrMsg  string `json:"errMsg"`
+	Data    struct {
+		UserID string `json:"userID"`
+		Token  string `json:"token"`
+	} `json:"data"`
+}
+
+type UserRegisterRequest struct {
+	UserID   string `json:"userID" binding:"required"`
+	Nickname string `json:"nickname" binding:"required"`
+	FaceURL  string `json:"faceURL" binding:"required"`
+	// "userID": "11111112",
+	//   "nickname": "yourNickname",
+	//   "faceURL": "yourFaceURL"
+}
+
+type UserRegisterResp struct {
+	// "errCode": 0,
+	// "errMsg": "",
+	// "errDlt": ""
+	ErrCode int    `json:"errCode"`
+	ErrMsg  string `json:"errMsg"`
+	ErrDlt  string `json:"errDlt"`
+	Data    struct {
+		UserID string `json:"userID"`
+	} `json:"data"`
 }
 
 func main() {
@@ -49,7 +74,7 @@ func main() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		fmt.Printf("req: %+v", req)
+		fmt.Printf("req: %+v \n", req)
 
 		adminToken, err := getAdminToken()
 		if err != nil {
@@ -66,8 +91,49 @@ func main() {
 		fmt.Println("用户 token:", userToken)
 
 		c.JSON(http.StatusOK, TokenResponse{
-			UserID: req.UserID,
-			Token:  userToken,
+			ErrCode: 0,
+			ErrMsg:  "",
+			Data: struct {
+				UserID string `json:"userID"`
+				Token  string `json:"token"`
+			}{
+				UserID: req.UserID,
+				Token:  userToken,
+			},
+		})
+	})
+
+	r.POST("/user_register", func(c *gin.Context) {
+		var req UserRegisterRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			fmt.Printf("user_register err: %+v \n", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		fmt.Printf("req: %+v \n", req)
+
+		adminToken, err := getAdminToken()
+		if err != nil {
+			fmt.Println("user_register 获取管理员 token 失败:", err)
+			return
+		}
+		fmt.Println("user_register 管理员 token:", adminToken)
+
+		var users []UserRegisterRequest
+		users = append(users, req)
+		if err := doUserRegister(adminToken, users); err != nil {
+			fmt.Println("user_register 用户注册失败:", err)
+			return
+		}
+		c.JSON(http.StatusOK, UserRegisterResp{
+			ErrCode: 0,
+			ErrMsg:  "",
+			ErrDlt:  "",
+			Data: struct {
+				UserID string `json:"userID"`
+			}{
+				UserID: req.UserID,
+			},
 		})
 	})
 
@@ -108,7 +174,7 @@ func getAdminToken() (string, error) {
 		"userID": AdminID,
 	}
 	bodyBytes, _ := json.Marshal(reqBody)
-	fmt.Printf("getAdminToken reqBody: %+v", reqBody)
+	fmt.Printf("getAdminToken reqBody: %+v \n", reqBody)
 
 	req, _ := http.NewRequest("POST", url, bytes.NewReader(bodyBytes))
 	req.Header.Set("Content-Type", "application/json")
@@ -143,7 +209,7 @@ func getUserToken(adminToken, userID string, platformID int) (string, error) {
 		"platformID": platformID,
 	}
 	bodyBytes, _ := json.Marshal(reqBody)
-	fmt.Printf("getUserToken reqBody: %+v", reqBody)
+	fmt.Printf("getUserToken reqBody: %+v \n", reqBody)
 
 	req, _ := http.NewRequest("POST", url, bytes.NewReader(bodyBytes))
 	req.Header.Set("Content-Type", "application/json")
@@ -153,6 +219,7 @@ func getUserToken(adminToken, userID string, platformID int) (string, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		fmt.Errorf("getUserToken err: %+v \n", err)
 		return "", err
 	}
 	defer resp.Body.Close()
@@ -160,12 +227,51 @@ func getUserToken(adminToken, userID string, platformID int) (string, error) {
 	respBytes, _ := ioutil.ReadAll(resp.Body)
 	var respData UserTokenResp
 	if err := json.Unmarshal(respBytes, &respData); err != nil {
+		fmt.Errorf("getUserToken err: %+v \n", err)
 		return "", err
 	}
+	fmt.Printf("getUserToken respData: %+v \n", respData)
 
 	if respData.ErrCode != 0 {
+		fmt.Errorf("获取用户 token 失败: %d %s", respData.ErrCode, respData.ErrMsg)
 		return "", fmt.Errorf("获取用户 token 失败: %d %s", respData.ErrCode, respData.ErrMsg)
 	}
-
 	return respData.Data.Token, nil
+}
+
+func doUserRegister(adminToken string, users []UserRegisterRequest) error {
+	url := fmt.Sprintf("%s/user/user_register", APIAddress)
+
+	reqBody := map[string][]UserRegisterRequest{
+		"users": users,
+	}
+	bodyBytes, _ := json.Marshal(reqBody)
+	fmt.Printf("doUserRegister reqBody: %+v \n", reqBody)
+
+	req, _ := http.NewRequest("POST", url, bytes.NewReader(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("operationID", fmt.Sprintf("%d", time.Now().UnixMilli()))
+	req.Header.Set("token", adminToken)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Errorf("doUserRegister err: %+v \n", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	respBytes, _ := ioutil.ReadAll(resp.Body)
+	var respData UserRegisterResp
+	if err := json.Unmarshal(respBytes, &respData); err != nil {
+		fmt.Errorf("doUserRegister err: %+v \n", err)
+		return err
+	}
+	fmt.Printf("doUserRegister respData: %+v \n", respData)
+
+	if respData.ErrCode != 0 && respData.ErrCode != 1102 {
+		fmt.Errorf("doUserRegister respData: %+v \n", respData)
+		return fmt.Errorf("用户注册失败: %d %s", respData.ErrCode, respData.ErrMsg)
+	}
+	return nil
 }

@@ -4,7 +4,7 @@
 
     <div v-if="!isLogin" class="login-box">
       <input v-model="userID" placeholder="输入你的用户ID" />
-      <!-- <input v-model="token" placeholder="输入 token" /> -->
+      <input v-model="receiverID" placeholder="输入 receiverID" />
       <button @click="login">登录</button>
     </div>
 
@@ -59,15 +59,32 @@ IMSDK.on(CbEvents.OnRecvNewMessages, (msgs) => {
 });
 
 const isLogin = ref(false);
-const userID = ref("8138319424");
+const userID = ref("");
 const platformID = ref(5);
 const token = ref("");
-const receiverID = ref("4494661022");
+const receiverID = ref("");
 const newMessage = ref("1234567489");
 const messages = ref<{ sender: string; content: string }[]>([]);
 
 async function login() {
   try {
+
+    const resRegist = await fetch("http://localhost:8081/user_register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userID: userID.value, nickname: `用户${userID.value}`, faceURL: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userID.value}` }),
+    });
+    console.log("注册结果", resRegist);
+    if (resRegist.status != 200) {
+      console.error("注册失败", resRegist.status, resRegist.statusText);
+      return;
+    }
+    const resRegistData = await resRegist.json();
+    console.log("注册结果 data", resRegistData);
+    if (resRegistData.errCode != 0) {
+      console.error("注册失败", resRegistData.errCode, resRegistData.errMsg);
+      return;
+    }
 
     // 1. 调用后端获取 token
     const res = await fetch("http://localhost:8081/token", {
@@ -75,8 +92,18 @@ async function login() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userID: userID.value, platformID: platformID.value }),
     });
+    console.log("获取 token 结果 res", res);
+    if (res.status != 200) {
+      console.error("获取 token", res.status, res.statusText);
+      return;
+    }
     const data = await res.json();
-    token.value = data.token;
+    console.log("获取 token 结果 data", data);
+    if (data.errCode != 0) {
+      console.error("获取 token 失败", data.errCode, data.errMsg);
+      return;
+    }
+    token.value = data.data.token;
 
     const config = {
         userID: userID.value,       // IM 用户 userID
