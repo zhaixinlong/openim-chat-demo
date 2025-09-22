@@ -66,10 +66,15 @@ const receiverID = ref("");
 const newMessage = ref("1234567489");
 const messages = ref<{ sender: string; content: string }[]>([]);
 
+const registerUrl = "http://127.0.0.1:8081/user_register"
+const tokenUrl = "http://127.0.0.1:8081/token"
+const apiAddr = "http://127.0.0.1:10002"
+const wsAddr = "ws://127.0.0.1:10001"
+
 async function login() {
   try {
 
-    const resRegist = await fetch("http://localhost:8081/user_register", {
+    const resRegist = await fetch(registerUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userID: userID.value, nickname: `用户${userID.value}`, faceURL: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userID.value}` }),
@@ -87,7 +92,7 @@ async function login() {
     }
 
     // 1. 调用后端获取 token
-    const res = await fetch("http://localhost:8081/token", {
+    const res = await fetch(tokenUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userID: userID.value, platformID: platformID.value }),
@@ -109,8 +114,8 @@ async function login() {
         userID: userID.value,       // IM 用户 userID
         token: token.value,        // IM 用户令牌
         platformID: platformID.value,   // 当前登录平台号
-        apiAddr: "http://192.168.0.100:10002",   // IM api 地址，一般为`http://your-server-ip:10002`或`https://your-server-ip/api
-        wsAddr: "ws://192.168.0.100:10001/ws",    // IM ws 地址，一般为`ws://your-server-ip:10001`或`wss://your-server-ip/msg_gateway
+        apiAddr: apiAddr,   // IM api 地址，一般为`http://your-server-ip:10002`或`https://your-server-ip/api
+        wsAddr: wsAddr,    // IM ws 地址，一般为`ws://your-server-ip:10001`或`wss://your-server-ip/msg_gateway
     }
     IMSDK.login(config)
     .then(async (res) => {
